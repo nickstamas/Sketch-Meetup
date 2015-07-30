@@ -1,0 +1,73 @@
+// Fill with Picture Of (control command g)
+// Fills selected layers with images tagged from Flickr
+// by Nick Stamas @nickstamas
+
+if ([selection count] > 0) {
+  var alert = [NSAlert alertWithMessageText: "Search for:"
+                                 defaultButton:"OK"
+                               alternateButton:"Cancel"
+                                   otherButton:nil
+                     informativeTextWithFormat:""];
+
+  var input = [[NSTextField alloc] initWithFrame:NSMakeRect(0, 0, 200, 24)];
+  [input setStringValue:"corgi"];
+  [input autorelease];
+  [alert setAccessoryView:input];
+  var button = [alert runModal];
+
+  if (button == NSAlertDefaultReturn) {
+    [input validateEditing];
+    var tag = [input stringValue];
+
+    tag = tag.replace(/\s/, "");
+
+    var request = [[NSMutableURLRequest alloc] init];
+    [request setHTTPMethod:@"GET"];
+    var queryString = "http://api.meetup.com/find/groups?key=6a7b4464543579877e3248517944c&text=" + tag;
+    [request setURL:[NSURL URLWithString:queryString]];
+
+    var error = [[NSError alloc] init];
+    var responseCode = null;
+
+    var oResponseData = [NSURLConnection sendSynchronousRequest:request returningResponse:responseCode error:error];
+
+    var dataString = [[NSString alloc] initWithData:oResponseData
+                                           encoding:NSUTF8StringEncoding];
+
+    var data = JSON.parse(dataString);
+
+    if (data && data.length > 0) {
+      for (var i=0; i <= [selection count]; i++) {
+        var photoLink;
+        var count = 0;
+        while (!photoLink && count <= data.length) {
+          var randomIndex = Math.floor(Math.random()*(data.length-1));
+          if (data[randomIndex].group_photo) {
+            if (data[randomIndex].group_photo.photo_link) {
+              photoLink = data[randomIndex].group_photo.photo_link;
+            }
+          }
+          count += 1;
+        }
+        [doc showMessage: "Image from '" + data[randomIndex].name] + "'";
+        var url = [[NSURL alloc] initWithString: photoLink];
+
+        var newImage = [[NSImage alloc] initByReferencingURL:url];
+
+        var layer = [selection objectAtIndex:i];
+
+        var fill = layer.style().fills().firstObject();
+        fill.setFillType(4); 
+
+        var coll = layer.style().fills().firstObject().documentData().images();
+
+        [fill setPatternImage: newImage collection:coll];
+      }
+    } else {
+      var message = "No image found with '" + tag + "'";
+      [doc showMessage: message];
+    }
+  }
+} else {
+  [doc showMessage:"No layer is selected."];
+}
